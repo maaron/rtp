@@ -8,13 +8,20 @@ namespace media
     class rtp_packet;
     class rtcp_packet;
 
-    struct rtp
+    class rtp
     {
         ip::udp::socket local;
         ip::udp::endpoint remote;
         char buf[2048];
 
-        rtp(io_service& io, ip::udp::endpoint local_endpoint);
+    public:
+        rtp(io_service& io);
+
+        void open(const ip::address& iface, int& port);
+        bool try_open(const ip::address& iface, int port);
+
+        void set_remote(const ip::udp::endpoint& ep);
+
         void stop();
 
         template <typename callback_t>

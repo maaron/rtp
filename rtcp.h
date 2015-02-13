@@ -30,7 +30,12 @@ namespace media
         uint32_t delay_last_sr;
 
     public:
-        rtcp(io_service& io, ip::udp::endpoint local_endpoint);
+        rtcp(io_service& io, uint32_t ssrc);
+
+        void open(const ip::address& iface, int& port);
+        bool try_open(const ip::address& iface, int port);
+
+        void set_remote(const ip::udp::endpoint& ep);
 
         // Starts an asynchronous receive operation.  Upon completion, the 
         // supplied callback will be called.

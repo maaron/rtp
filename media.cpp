@@ -18,13 +18,14 @@ namespace media
     {
         FILETIME ft, ntp_ft;
         SYSTEMTIME ntp_epoch;
+
         ntp_epoch.wDay = 1;
         ntp_epoch.wHour = 0;
         ntp_epoch.wMilliseconds = 0;
         ntp_epoch.wMinute = 0;
         ntp_epoch.wMonth = 1;
         ntp_epoch.wSecond = 0;
-        ntp_epoch.wYear = 1970;
+        ntp_epoch.wYear = 1900;
 
         ::GetSystemTimeAsFileTime(&ft);
         ::SystemTimeToFileTime(&ntp_epoch, &ntp_ft);
@@ -33,6 +34,13 @@ namespace media
         li.LowPart = ft.dwLowDateTime - ntp_ft.dwLowDateTime;
         li.HighPart = ft.dwHighDateTime - ntp_ft.dwHighDateTime;
 
-        return li.QuadPart;
+        return 
+            ((li.QuadPart / 10000000) << 32) |
+            ((li.QuadPart % 10000000) * ULONG_MAX) / 10000000;
+    }
+
+    uint32_t rand32()
+    {
+        return rand() << 16 | rand();
     }
 }

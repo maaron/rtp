@@ -1,33 +1,30 @@
 #pragma once
 
-#include "media.h"
-#include "rtcp.h"
 #include "rtp.h"
+#include "rtcp.h"
 #include <boost\asio.hpp>
 
 namespace media
 {
     using namespace boost::asio;
 
-    class stack
+    class rtp_packet;
+    class rtcp_packet;
+
+    class stream
     {
-        io_service io;
+        io_service& io;
         rtp rtp;
         rtcp rtcp;
+        bool timer_started;
         deadline_timer rtcp_timer;
         void rtcp_timer_expired(const boost::system::error_code& ec);
 
+        uint32_t ssrc;
         uint32_t remote_start_time;
         uint64_t ntp_start_time;
         uint32_t rtp_start_time;
-        uint32_t ssrc;
 
-    public:
-        stack(ip::udp::endpoint rtp_endpoint, ip::udp::endpoint rtcp_endpoint);
-        void stop();
-        void run();
-
-    private:
         uint32_t get_rtp_time(uint64_t ntp_time);
 
         void start_rtp_receive();
@@ -39,5 +36,13 @@ namespace media
         void rtp_received(rtp_packet&);
         void rtcp_received(rtcp_packet&);
         void stop_request_received();
+
+    public:
+        stream(io_service& io, uint32_t ssrc);
+
+        void open(const ip::address& iface, int& rtp_port, int& rtcp_port);
+        void start();
+        void start(const ip::udp::endpoint rtp_peer, const ip::udp::endpoint rtcp_peer);
+        void stop();
     };
 }

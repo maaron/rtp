@@ -1,25 +1,8 @@
 #pragma once
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <Windows.h>
-
 #define LOG(format, ...) log_msg(format, __VA_ARGS__)
 
-void log_msg(const char* format, ...)
+namespace media
 {
-    char buffer[512];
-
-    va_list args;
-    va_start(args, format);
-
-    vsnprintf_s(buffer, _TRUNCATE, format, args);
-
-    va_end(args);
-
-    SYSTEMTIME st;
-    ::GetLocalTime(&st);
-
-    printf("%02d:%02d:%02d.%03d: %s", 
-        st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, buffer);
+    void log_msg(const char* format, ...);
 }

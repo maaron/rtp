@@ -46,10 +46,10 @@ namespace media
 
     class rtcp_packet
     {
-        rtcp_header* first_header;
-        rtcp_header* current_header;
-        size_t compound_size;
+        rtcp_header* header;
+        char* end_ptr;
         char* write_ptr;
+        char* data_ptr;
 
         int get_V();
         bool get_P();
@@ -68,15 +68,12 @@ namespace media
         // For received packets
         rtcp_packet(void* data, size_t size);
 
-        // For packets to be sent
-        rtcp_packet(void* data);
-
         void* data();
         size_t size();
 
         bool move_next();
 
-
+        void write_header();
         void write_sender_info(uint32_t ssrc, uint64_t ntp_time, uint32_t rtp_time, uint32_t octet_count, uint32_t packet_count);
         void write_sender_block(uint32_t ssrc, uint8_t fraction_lost, uint32_t packets_lost, uint32_t highest_sequence, uint32_t jitter, uint32_t last_sr, uint32_t delay_last_sr);
     };

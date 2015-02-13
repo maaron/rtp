@@ -7,8 +7,8 @@
 
 namespace media
 {
-    rtcp::rtcp(io_service& io, ip::udp::endpoint local_endpoint)
-        : io(io), local(io, local_endpoint),
+    rtcp::rtcp(io_service& io, uint32_t ssrc)
+        : io(io), local(io), ssrc(ssrc),
         bytes_sent(0),
         packets_sent(0),
         bytes_received(0),
@@ -21,6 +21,28 @@ namespace media
         last_sr(0),
         delay_last_sr(0)
     {
+    }
+
+    void rtcp::open(const ip::address& iface, int& port)
+    {
+        ip::udp::endpoint ep(iface, port);
+        local.open(ep.protocol());
+        local.bind(ip::udp::endpoint(iface, port));
+        port = local.local_endpoint().port();
+    }
+
+    bool rtcp::try_open(const ip::address& iface, int port)
+    {
+        boost::system::error_code ec;
+        ip::udp::endpoint ep(iface, port);
+        local.open(ep.protocol());
+        local.bind(ep, ec);
+        return !ec;
+    }
+
+    void rtcp::set_remote(const ip::udp::endpoint& ep)
+    {
+        remote = ep;
     }
 
     void rtcp::stop()
@@ -47,8 +69,12 @@ namespace media
 
     void rtcp::send_packet(uint64_t ntp_time, uint32_t rtp_time)
     {
+        if (remote.port() == 0) return;
+
         char buf[2048];
-        rtcp_packet pkt(buf);
+        rtcp_packet pkt(buf, sizeof(buf));
+
+        pkt.write_header();
 
         pkt.write_sender_info(ssrc,
             ntp_time, 
