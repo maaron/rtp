@@ -74,15 +74,13 @@ namespace media
         char buf[2048];
         rtcp_packet pkt(buf, sizeof(buf));
 
-        pkt.write_header();
-
-        pkt.write_sender_info(ssrc,
+        pkt.write_sender_report(ssrc,
             ntp_time, 
             rtp_time, 
             bytes_sent, 
             packets_sent);
 
-        pkt.write_sender_block(remote_ssrc, 
+        pkt.write_sender_report_block(remote_ssrc,
             fraction_lost,
             packets_lost,
             highest_sequence,
