@@ -7,47 +7,11 @@
 
 namespace media
 {
-    rtcp::rtcp(io_service& io, uint32_t ssrc)
-        : io(io), local(io), ssrc(ssrc),
+    rtcp::rtcp(uint32_t ssrc, const char* cname)
+        : ssrc(ssrc), cname(cname),
         bytes_sent(0),
-        packets_sent(0),
-        bytes_received(0),
-        packets_received(0),
-        remote_ssrc(0),
-        fraction_lost(0),
-        packets_lost(0),
-        highest_sequence(0),
-        jitter(0),
-        last_sr(0),
-        delay_last_sr(0)
+        packets_sent(0)
     {
-    }
-
-    void rtcp::open(const ip::address& iface, int& port)
-    {
-        ip::udp::endpoint ep(iface, port);
-        local.open(ep.protocol());
-        local.bind(ip::udp::endpoint(iface, port));
-        port = local.local_endpoint().port();
-    }
-
-    bool rtcp::try_open(const ip::address& iface, int port)
-    {
-        boost::system::error_code ec;
-        ip::udp::endpoint ep(iface, port);
-        local.open(ep.protocol());
-        local.bind(ep, ec);
-        return !ec;
-    }
-
-    void rtcp::set_remote(const ip::udp::endpoint& ep)
-    {
-        remote = ep;
-    }
-
-    void rtcp::stop()
-    {
-        local.close();
     }
 
     void rtcp::rtp_sent(rtp_packet& pkt)
@@ -58,8 +22,12 @@ namespace media
 
     void rtcp::rtp_received(rtp_packet& pkt)
     {
-        bytes_received += pkt.payload_size();
-        packets_received++;
+        auto src = peers.find(pkt.get_ssrc());
+        if (src != peers.end())
+        {
+            src->second.bytes_received += pkt.payload_size();
+            src->second.packets_received++;
+        }
     }
 
     int rtcp::get_send_time()
@@ -67,27 +35,46 @@ namespace media
         return 2500;
     }
 
-    void rtcp::send_packet(uint64_t ntp_time, uint32_t rtp_time)
+    void rtcp::build_packet(uint64_t ntp_time, uint32_t rtp_time, rtcp_packet& pkt)
     {
-        if (remote.port() == 0) return;
-
-        char buf[2048];
-        rtcp_packet pkt(buf, sizeof(buf));
-
+        // Sender Report Packet
         pkt.write_sender_report(ssrc,
             ntp_time, 
             rtp_time, 
             bytes_sent, 
             packets_sent);
 
-        pkt.write_sender_report_block(remote_ssrc,
-            fraction_lost,
-            packets_lost,
-            highest_sequence,
-            jitter,
-            last_sr,
-            delay_last_sr);
+        // Sender Report Block
+        for (auto s = peers.begin(); s != peers.end(); s++)
+        {
+            pkt.write_sender_report_block(
+                s->first,
+                s->second.fraction_lost,
+                s->second.packets_lost,
+                s->second.highest_sequence,
+                s->second.jitter,
+                s->second.last_sr,
+                s->second.delay_last_sr);
+        }
 
-        local.send_to(buffer(buf, pkt.size()), remote);
+        // Sdes Packet
+        pkt.write_sdes(ssrc);
+        pkt.write_sdes_cname(cname.c_str());
+        pkt.write_sdes_end();
+    }
+
+    void rtcp::send_bye(const char* reason)
+    {
+        char buf[2048];
+        rtcp_packet pkt(buf, sizeof(buf));
+
+        pkt.write_sdes(ssrc);
+        pkt.write_sdes_cname(cname.c_str());
+        pkt.write_sdes_end();
+
+        pkt.write_bye(ssrc);
+        pkt.write_bye_reason(reason);
+        
+        local.send_to(buffer(buf, pkt.compound_size()), remote);
     }
 }

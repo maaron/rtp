@@ -26,7 +26,7 @@ namespace media
     void rtcp_packet::add_bytes(int bytes)
     {
         write_ptr += bytes;
-        header->length = htons(ntohs(header->length) + bytes / 4);
+        header->length = htons((packet_bytes_written() - sizeof(header)) / 4);
     }
 
     void rtcp_packet::increment_RC()
@@ -34,7 +34,12 @@ namespace media
         set_RC(get_RC() + 1);
     }
 
-    size_t rtcp_packet::size()
+    size_t rtcp_packet::compound_size()
+    {
+        return write_ptr - data_ptr;
+    }
+
+    size_t rtcp_packet::packet_size()
     {
         return (ntohs(header->length) + 1) * sizeof(uint32_t);
     }
@@ -134,7 +139,7 @@ namespace media
     void rtcp_packet::write_sdes_end()
     {
         // Careful... this pad requires at least one byte
-        int num_pad_bytes = 4 - (size() & 0x03);
+        int num_pad_bytes = 4 - (packet_bytes_written() & 0x03);
         
         if (write_ptr + num_pad_bytes >= end_ptr) return;
 
@@ -171,7 +176,7 @@ namespace media
     {
         int length = 0;
         while (reason[length++] != 0 && length < 256);
-        int num_pad_bytes = (4 - (size() & 0x03)) & 0x03;
+        int num_pad_bytes = (4 - (packet_bytes_written() & 0x03)) & 0x03;
 
         if (write_ptr + 1 + length + num_pad_bytes >= end_ptr) return;
 
@@ -180,5 +185,10 @@ namespace media
         memset(write_ptr + 1 + length, 0, num_pad_bytes);
 
         add_bytes(1 + length + num_pad_bytes);
+    }
+
+    size_t rtcp_packet::packet_bytes_written()
+    {
+        return write_ptr - (char*)header;
     }
 }

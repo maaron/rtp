@@ -4,7 +4,7 @@
 #include "rtp_packet.h"
 #include "rtcp_packet.h"
 #include <boost\bind.hpp>
-#include <stdlib.h>
+#include <random>
 #include <Windows.h>
 
 enum RtcpPayloadTypes
@@ -39,8 +39,11 @@ namespace media
             ((li.QuadPart % 10000000) * ULONG_MAX) / 10000000;
     }
 
+    std::default_random_engine engine((unsigned long)get_ntp_time());
+    std::uniform_int_distribution<uint32_t> dist;
+
     uint32_t rand32()
     {
-        return rand() << 16 | rand();
+        return dist(engine);
     }
 }

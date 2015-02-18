@@ -12,7 +12,6 @@ namespace media
     class source
     {
         io_service io;
-        uint32_t ssrc;
         std::list<std::shared_ptr<stream> > streams;
 
     public:
@@ -21,7 +20,7 @@ namespace media
         // Open RTP and RTCP sockets using the specified ports.  If either 
         // of rtp_port/rtcp_port are 0, upon return they will be set to the 
         // port that was allocated.
-        void open_stream(const ip::address& iface, int& rtp_port, int& rtcp_port);
+        void open_stream(const ip::address& iface, const char* cname, int& rtp_port, int& rtcp_port);
 
         // Starts media loopback with RTCP on all streams.  RTCP won't send 
         // the first packet until one is received from the peer (that's when 

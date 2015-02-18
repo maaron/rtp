@@ -10,13 +10,11 @@ namespace media
 {
     source::source()
     {
-        srand((int)get_ntp_time());
-        ssrc = rand32();
     }
 
-    void source::open_stream(const ip::address& iface, int& rtp_port, int& rtcp_port)
+    void source::open_stream(const ip::address& iface, const char* cname, int& rtp_port, int& rtcp_port)
     {
-        auto s = std::make_shared<stream>(io, ssrc);
+        auto s = std::make_shared<stream>(cname);
         s->open(iface, rtp_port, rtcp_port);
         streams.push_back(s);
     }

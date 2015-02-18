@@ -10,17 +10,8 @@ namespace media
 
     class rtp
     {
-        ip::udp::socket local;
-        ip::udp::endpoint remote;
-        char buf[2048];
-
     public:
-        rtp(io_service& io);
-
-        void open(const ip::address& iface, int& port);
-        bool try_open(const ip::address& iface, int port);
-
-        void set_remote(const ip::udp::endpoint& ep);
+        rtp();
 
         void stop();
 
@@ -35,7 +26,5 @@ namespace media
                     c(pkt);
                 });
         }
-
-        void send(rtp_packet&);
     };
 }

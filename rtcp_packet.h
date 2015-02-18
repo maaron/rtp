@@ -74,12 +74,22 @@ namespace media
         void increment_RC();
         bool write_header(int pt);
         void write_sdes_item(int id, const char* data);
+        size_t packet_bytes_written();
 
     public:
         rtcp_packet(void* data, size_t size);
 
+        // Returns the internal pointer to the compound packet data
         void* data();
-        size_t size();
+
+        // Returns the current size of the compound packet
+        size_t compound_size();
+
+        // Returns the size of the packet currently being read/written, 
+        // including the 4-byte header.  This is 4 bytes less than the 
+        // length represented by the RTCP length field (the length field is 
+        // also in 32-bit units).
+        size_t packet_size();
 
         bool move_next();
 
@@ -99,10 +109,17 @@ namespace media
             uint32_t last_sr, 
             uint32_t delay_last_sr);
         
+        // Writes the SDES packet header, starting a new RTCP packet within the compound packet.
         void write_sdes(uint32_t src);
+
+        // Writes the given SDES item
         void write_sdes_cname(const char* user_host);
         void write_sdes_name(const char* name);
         void write_sdes_email(const char* email);
+
+        // Writes the padding bytes and sets the correct length in the 
+        // packet header.  This MUST be called after writing SDES items, or 
+        // the packet won't be well-formed.
         void write_sdes_end();
 
         void write_bye(uint32_t src);
