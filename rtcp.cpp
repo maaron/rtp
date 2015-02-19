@@ -13,7 +13,8 @@ namespace media
         ssrc(ssrc), 
         cname(cname),
         bytes_sent(0),
-        packets_sent(0)
+        packets_sent(0),
+        init(false)
     {
     }
 
@@ -41,7 +42,7 @@ namespace media
 
     void rtcp::rtcp_received(rtcp_packet& pkt)
     {
-        // TODO process this packet
+        // TODO
     }
 
     void rtcp::send_report()
@@ -90,8 +91,7 @@ namespace media
         pkt.write_sdes_end();
 
         pkt.write_bye(ssrc);
-        pkt.write_bye_reason(bye_reason.c_str());
-        
+
         connection.send_rtcp(pkt);
     }
 }

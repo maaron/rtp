@@ -14,8 +14,9 @@ namespace media
     {
         uint32_t ssrc;
         connection_pair& connection;
-        boost::asio::deadline_timer timer;
-
+ 
+        bool init;
+        std::string cname;
         uint32_t bytes_sent;
         uint32_t packets_sent;
             
@@ -34,9 +35,6 @@ namespace media
             rtcp_peer_info();
         };
         std::map<uint32_t, rtcp_peer_info> peers;
-
-        // SDES items
-        std::string cname;
 
     public:
         rtcp(connection_pair&, uint32_t ssrc, const char* cname);
