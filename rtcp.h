@@ -14,9 +14,10 @@ namespace media
     {
         uint32_t ssrc;
         connection_pair& connection;
+        boost::asio::deadline_timer timer;
+
         uint32_t bytes_sent;
         uint32_t packets_sent;
-        std::string bye_reason;
             
         struct rtcp_peer_info
         {

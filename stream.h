@@ -19,18 +19,22 @@ namespace media
         
         rtcp rtcp;
         
-        void rtcp_timer_expired(const boost::system::error_code& ec);
-
+        bool init;
         uint32_t remote_start_time;
 
         void start_rtp_receive();
         void start_rtcp_receive();
         void start_rtcp_timer();
+
+        // This method performs the media loop-back by taking a received 
+        // packet, modifying header fields and sending it to the RTP peer.
         void loop_rtp_packet(rtp_packet&);
 
+        // This is called whenever an RTP packet is received.
         void rtp_received(rtp_packet&);
+
+        // This is called whenever an RTCP packet is received.
         void rtcp_received(rtcp_packet&);
-        void stop_request_received();
 
     public:
         stream(const char* cname);
