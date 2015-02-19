@@ -24,20 +24,27 @@ namespace media
         {
             uint32_t bytes_received;
             uint32_t packets_received;
-            uint32_t remote_ssrc;
             uint8_t fraction_lost;
             uint32_t packets_lost;
             uint32_t highest_sequence;
             uint32_t jitter;
             uint32_t last_sr;
-            uint32_t delay_last_sr;
+            ntp_time_t timestamp_last_sr;
 
             rtcp_peer_info();
         };
         std::map<uint32_t, rtcp_peer_info> peers;
 
+        void timer_expired();
+
+        void sender_report_received(rtcp_header&, rtcp_packet&);
+        void receiver_report_received(rtcp_header&, rtcp_packet&);
+        void sdes_received(rtcp_header&, rtcp_packet&);
+        void bye_received(rtcp_header&, rtcp_packet&);
+
     public:
         rtcp(connection_pair&, uint32_t ssrc, const char* cname);
+        ~rtcp();
 
         void rtp_sent(rtp_packet&);
         void rtp_received(rtp_packet&);

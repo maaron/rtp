@@ -14,7 +14,7 @@ enum RtcpPayloadTypes
 
 namespace media
 {
-    uint64_t get_ntp_time()
+    ntp_time_t get_ntp_time()
     {
         FILETIME ft, ntp_ft;
         SYSTEMTIME ntp_epoch;
@@ -34,12 +34,15 @@ namespace media
         li.LowPart = ft.dwLowDateTime - ntp_ft.dwLowDateTime;
         li.HighPart = ft.dwHighDateTime - ntp_ft.dwHighDateTime;
 
-        return 
-            ((li.QuadPart / 10000000) << 32) |
-            ((li.QuadPart % 10000000) * ULONG_MAX) / 10000000;
+        ntp_time_t t;
+
+        t.seconds = (uint32_t)(li.QuadPart / 10000000);
+        t.fractional = ((li.QuadPart % 10000000) * ULONG_MAX) / 10000000;
+
+        return t;
     }
 
-    std::default_random_engine engine((unsigned long)get_ntp_time());
+    std::default_random_engine engine((unsigned long)get_ntp_time().fractional);
     std::uniform_int_distribution<uint32_t> dist;
 
     uint32_t rand32()

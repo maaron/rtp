@@ -17,6 +17,8 @@ namespace media
         ip::udp::endpoint ep(iface, port);
         local.open(ep.protocol());
         local.bind(ep);
+
+        LOG("Opened socket bound to [%s]:%d\n", iface.to_string().c_str(), port);
     }
 
     bool connection::try_open(const boost::asio::ip::address& iface, int& port)
@@ -25,6 +27,9 @@ namespace media
         ip::udp::endpoint ep(iface, port);
         local.open(ep.protocol());
         local.bind(ep, ec);
+
+        if (!ec) LOG("Opened socket bound to [%s]:%d\n", iface.to_string().c_str(), port);
+        
         return !ec;
     }
 
@@ -35,7 +40,17 @@ namespace media
         local.send_to(buffer(data, size), remote);
     }
 
-    void connection::close() { local.close(); }
+    void connection::close()
+    {
+        if (local.is_open())
+        {
+            LOG("Closing socket bound to [%s]:%d\n", 
+                local.local_endpoint().address().to_string().c_str(), 
+                local.local_endpoint().port());
+
+            local.close();
+        }
+    }
 
     connection_pair::connection_pair()
         : c1(io), c2(io), rtp(&c1), rtcp(&c2), rtcp_timer(io)
@@ -44,7 +59,7 @@ namespace media
 
     connection_pair::~connection_pair()
     {
-        if (io_thread.joinable()) stop();
+        stop();
     }
 
     void connection_pair::open(const boost::asio::ip::address& iface, int& rtp_port, int& rtcp_port)
@@ -83,6 +98,11 @@ namespace media
 
     void connection_pair::start()
     {
+        LOG("Starting IO for stream [%s](%d,%d)\n",
+            c1.local.local_endpoint().address().to_string().c_str(),
+            c1.local.local_endpoint().port(),
+            c2.local.local_endpoint().port());
+
         ntp_start_time = get_ntp_time();
         rtp_start_time = get_rtp_time(ntp_start_time);
 
@@ -91,7 +111,18 @@ namespace media
 
     void connection_pair::stop()
     {
-        post(bind(&connection_pair::stop_request_received, this));
+        if (io_thread.joinable())
+        {
+            LOG("Stopping IO for stream [%s](%d,%d)\n",
+                c1.local.local_endpoint().address().to_string().c_str(),
+                c1.local.local_endpoint().port(),
+                c2.local.local_endpoint().port());
+
+            post(bind(&connection_pair::stop_request_received, this));
+            io_thread.join();
+
+            LOG("Finished\n");
+        }
     }
 
     void connection_pair::stop_request_received()
@@ -101,9 +132,10 @@ namespace media
         c2.close();
     }
 
-    uint32_t connection_pair::get_rtp_time(uint64_t ntp_time)
+    uint32_t connection_pair::get_rtp_time(const ntp_time_t& ntp_time)
     {
-        return rtp_start_time + (uint32_t)(ntp_time - ntp_start_time);
+        return rtp_start_time + 
+            (ntp_time.fractional - ntp_start_time.fractional);
     }
 
     uint32_t connection_pair::get_rtp_start() { return rtp_start_time; }

@@ -11,11 +11,11 @@ namespace media
 {
     class connection
     {
+    public:
         boost::asio::ip::udp::socket local;
         boost::asio::ip::udp::endpoint remote;
         char buf[2048];
 
-    public:
         connection(boost::asio::io_service&);
 
         void open(const boost::asio::ip::address&, int& port);
@@ -53,7 +53,7 @@ namespace media
         boost::asio::deadline_timer rtcp_timer;
         boost::thread io_thread;
 
-        uint64_t ntp_start_time;
+        ntp_time_t ntp_start_time;
         uint32_t rtp_start_time;
 
         void stop_request_received();
@@ -72,7 +72,7 @@ namespace media
         void start();
         void stop();
 
-        uint32_t get_rtp_time(uint64_t ntp_time);
+        uint32_t get_rtp_time(const ntp_time_t&);
         uint32_t get_rtp_start();
         
         void set_rtcp_peer(const boost::asio::ip::udp::endpoint&);
@@ -101,10 +101,11 @@ namespace media
             });
         }
 
-        template <typename callback_t>
-        void start_timer(const boost::posix_time::ptime& t, callback_t cb)
+        template <typename duration_t, typename callback_t>
+        void start_timer(const duration_t& t, callback_t cb)
         {
-            rtcp_timer.expires_from_now(t, [cb](const boost::system::error_code& ec)
+            rtcp_timer.expires_from_now(t);
+            rtcp_timer.async_wait([cb](const boost::system::error_code& ec)
             {
                 if (!ec) cb();
             });

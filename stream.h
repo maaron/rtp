@@ -38,6 +38,7 @@ namespace media
 
     public:
         stream(const char* cname);
+        ~stream();
 
         // Opens RTP and RTCP sockets for a single stream
         void open(const ip::address& iface, int& rtp_port, int& rtcp_port);

@@ -8,14 +8,32 @@
 
 namespace media
 {
+    rtcp::rtcp_peer_info::rtcp_peer_info()
+        : bytes_received(0),
+        packets_received(0),
+        fraction_lost(0),
+        packets_lost(0),
+        highest_sequence(0),
+        jitter(0),
+        last_sr(0)
+    {
+        timestamp_last_sr.seconds = 0;
+        timestamp_last_sr.fractional = 0;
+    }
+
     rtcp::rtcp(connection_pair& c, uint32_t ssrc, const char* cname)
         : connection(c),
         ssrc(ssrc), 
         cname(cname),
         bytes_sent(0),
         packets_sent(0),
-        init(false)
+        init(true)
     {
+    }
+
+    rtcp::~rtcp()
+    {
+        LOG("RTCP closing\n");
     }
 
     void rtcp::rtp_sent(rtp_packet& pkt)
@@ -34,15 +52,98 @@ namespace media
         }
     }
 
+    void rtcp::timer_expired()
+    {
+        send_report();
+
+        connection.start_timer(
+            boost::posix_time::milliseconds(2000), 
+            boost::bind(&rtcp::timer_expired, this));
+    }
+
     void rtcp::bye()
     {
-        // TODO - this is simplified
+        // TODO
         send_bye();
     }
 
     void rtcp::rtcp_received(rtcp_packet& pkt)
     {
-        // TODO
+        if (init)
+        {
+            connection.start_timer(
+                boost::posix_time::milliseconds(2000), 
+                boost::bind(&rtcp::timer_expired, this));
+
+            init = false;
+        }
+
+        // Loop through compound packets
+        do
+        {
+            rtcp_header header;
+            pkt.read_header(header);
+
+            if (header.V == 2)
+            {
+                switch (header.PT)
+                {
+                case RTCP_SR:
+                    sender_report_received(header, pkt); break;
+
+                case RTCP_RR:
+                    receiver_report_received(header, pkt); break;
+
+                case RTCP_SDES:
+                    sdes_received(header, pkt); break;
+
+                case RTCP_BYE:
+                    bye_received(header, pkt); break;
+                }
+            }
+        } while (pkt.move_next());
+    }
+
+    void rtcp::sender_report_received(rtcp_header& header, rtcp_packet& pkt)
+    {
+        sender_report sr;
+        pkt.read_sender_report(sr);
+
+        auto& peer = peers[sr.ssrc];
+
+        peer.last_sr = 
+            ((sr.ntp_msw << 16) & 0xffff0000) |
+            ((sr.ntp_lsw >> 16) & 0x0000ffff);
+
+        peer.timestamp_last_sr.seconds = sr.ntp_msw;
+        peer.timestamp_last_sr.fractional = sr.ntp_lsw;
+    }
+
+    void rtcp::receiver_report_received(rtcp_header& header, rtcp_packet& pkt)
+    {
+    }
+
+    void rtcp::sdes_received(rtcp_header& header, rtcp_packet& pkt)
+    {
+    }
+
+    void rtcp::bye_received(rtcp_header& header, rtcp_packet& pkt)
+    {
+        for (int i = 0; i < header.RC; i++)
+        {
+            auto ssrc = pkt.read_ssrc();
+            peers.erase(ssrc);
+        }
+    }
+
+    uint32_t calc_dlsr(ntp_time_t now, ntp_time_t lsr_time)
+    {
+        uint32_t seconds = now.seconds - lsr_time.seconds;
+        uint64_t fractional = now.fractional - lsr_time.fractional;
+
+        return (uint32_t)(seconds * 65536 + 
+            (fractional * 65536) / 
+            ((uint64_t)std::numeric_limits<uint32_t>::max + 1));
     }
 
     void rtcp::send_report()
@@ -50,27 +151,33 @@ namespace media
         char buf[2048];
         rtcp_packet pkt(buf, sizeof(buf));
 
-        uint64_t ntp_time = get_ntp_time();
+        ntp_time_t ntp_time = get_ntp_time();
         uint32_t rtp_time = connection.get_rtp_time(ntp_time);
 
         // Sender Report Packet
-        pkt.write_sender_report(ssrc,
-            ntp_time, 
-            rtp_time, 
-            bytes_sent, 
-            packets_sent);
+        sender_report sr;
+        sr.ssrc = ssrc;
+        sr.ntp_msw = ntp_time.seconds;
+        sr.ntp_lsw = ntp_time.fractional;
+        sr.rtp_timestamp = rtp_time;
+        sr.octet_count = bytes_sent;
+        sr.packet_count = packets_sent;
+        pkt.write_sender_report(sr);
 
         // Sender Report Block
         for (auto s = peers.begin(); s != peers.end(); s++)
         {
-            pkt.write_sender_report_block(
-                s->first,
-                s->second.fraction_lost,
-                s->second.packets_lost,
-                s->second.highest_sequence,
-                s->second.jitter,
-                s->second.last_sr,
-                s->second.delay_last_sr);
+            report_block b;
+            b.ssrc = s->first;
+            b.fraction_lost = s->second.fraction_lost;
+            b.cumulative_lost = s->second.packets_lost;
+            b.extended_seq_received = s->second.highest_sequence;
+            b.interarrival_jitter = s->second.jitter;
+            b.last_sr = s->second.last_sr;
+            b.delay_since_last_sr = calc_dlsr(
+                get_ntp_time(), s->second.timestamp_last_sr);
+
+            pkt.write_sender_report_block(b);
         }
 
         // Sdes Packet

@@ -20,7 +20,8 @@ namespace media
         SYSTEMTIME st;
         ::GetLocalTime(&st);
 
-        printf("[%02d:%02d:%02d.%03d] %s", 
-            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, buffer);
+        printf("[%02d:%02d:%02d.%03d][%08x] %s", 
+            st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, 
+            ::GetCurrentThreadId(), buffer);
     }
 }

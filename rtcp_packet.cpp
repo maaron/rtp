@@ -7,7 +7,7 @@
 namespace media
 {
     rtcp_packet::rtcp_packet(void* data, size_t size)
-        : data_ptr((char*)data), header((rtcp_header*)data),
+        : data_ptr((char*)data), header((uint32_t*)data),
         write_ptr((char*)data),
         end_ptr((char*)data + size)
     {
@@ -15,25 +15,19 @@ namespace media
 
     void* rtcp_packet::data() { return data_ptr; }
 
-    int rtcp_packet::get_V() { return bf_get(header->V_P_RC, 6, 2); }
-    bool rtcp_packet::get_P() { return bf_get(header->V_P_RC, 5, 1); }
-    int rtcp_packet::get_RC() { return bf_get(header->V_P_RC, 0, 5); }
-    uint8_t rtcp_packet::get_PT() { return header->PT; }
-
-    void rtcp_packet::set_V(int v) { bf_set(header->V_P_RC, v, 6, 2); }
-    void rtcp_packet::set_P(bool p) { bf_set(header->V_P_RC, p, 5, 1); }
-    void rtcp_packet::set_RC(int rc) { bf_set(header->V_P_RC, rc, 0, 5); }
-    void rtcp_packet::set_PT(uint8_t pt) { header->PT = pt; }
-
     void rtcp_packet::add_bytes(int bytes)
     {
         write_ptr += bytes;
-        header->length = htons((packet_bytes_written() - sizeof(header)) / 4);
+        uint16_t* length_ptr = (uint16_t*)header + 1;
+        *length_ptr = htons((packet_bytes_written() - sizeof(uint32_t)) / 4);
     }
 
     void rtcp_packet::increment_RC()
     {
-        set_RC(get_RC() + 1);
+        uint32_t h = ntohl(*header);
+        int rc = bf_get(h, 24, 5);
+        bf_set(h, rc + 1, 24, 5);
+        *header = htonl(h);
     }
 
     size_t rtcp_packet::compound_size()
@@ -43,79 +37,61 @@ namespace media
 
     size_t rtcp_packet::packet_size()
     {
-        return (ntohs(header->length) + 1) * sizeof(uint32_t);
+        uint16_t* length = (uint16_t*)write_ptr + 1;
+        return (ntohs(*length) + 1) * sizeof(uint32_t);
     }
 
-    bool rtcp_packet::write_header(int pt)
+    void rtcp_packet::write32(uint32_t data)
     {
-        if (write_ptr + sizeof(rtcp_header) >= end_ptr) return false;
-
-        header = (rtcp_header*)write_ptr;
-
-        header->V_P_RC = 0x80;
-        header->PT = pt;
-        header->length = 0;
-
-        write_ptr += sizeof(rtcp_header);
-
-        return true;
+        *(uint32_t*)write_ptr = htonl(data);
+        add_bytes(sizeof(uint32_t));
     }
 
-    void rtcp_packet::write_sender_report(
-        uint32_t ssrc, 
-        uint64_t ntp_time, 
-        uint32_t rtp_time, 
-        uint32_t octet_count, 
-        uint32_t packet_count)
+    uint32_t rtcp_packet::read32()
     {
-        if (write_ptr + sizeof(sender_report) >= end_ptr) return;
+        if (write_ptr >= end_ptr) return 0;
 
-        if (!write_header(RTCP_SR)) return;
-
-        auto sr = (sender_report*)(write_ptr);
-        sr->ssrc = htonl(ssrc);
-        sr->ntp_lsw = htonl((uint32_t)ntp_time);
-        sr->ntp_msw = htonl((uint32_t)(ntp_time >> 32));
-        sr->rtp_timestamp = htonl(rtp_time);
-        sr->octet_count = htonl(octet_count);
-        sr->packet_count = htonl(packet_count);
-
-        add_bytes(sizeof(sender_report));
+        uint32_t value = htonl(*(uint32_t*)write_ptr);
+        write_ptr += sizeof(uint32_t);
+        return value;
     }
 
-    void rtcp_packet::write_sender_report_block(
-        uint32_t ssrc, 
-        uint8_t fraction_lost, uint32_t packets_lost, 
-        uint32_t highest_sequence, 
-        uint32_t jitter, 
-        uint32_t last_sr, 
-        uint32_t delay_last_sr)
+    void rtcp_packet::write_header(int pt)
     {
-        if (write_ptr + sizeof(report_block) >= end_ptr) return;
+        header = (uint32_t*)write_ptr;
+        *header = htonl(0x80000000 | (pt << 16));
+        write_ptr += sizeof(uint32_t);
+    }
 
-        auto block = (report_block*)write_ptr;
-        block->ssrc = ssrc;
-        block->fraction_cumulative_lost = (fraction_lost << 24) | (packets_lost & 0x00ffffff);
-        block->extended_seq_received = highest_sequence;
-        block->interarrival_jitter = jitter;
-        block->last_sr = last_sr;
-        block->delay_since_last_sr = delay_last_sr;
+    void rtcp_packet::write_sender_report(sender_report& sr)
+    {
+        write_header(RTCP_SR);
+
+        write32(sr.ssrc);
+        write32(sr.ntp_msw);
+        write32(sr.ntp_lsw);
+        write32(sr.rtp_timestamp);
+        write32(sr.octet_count);
+        write32(sr.packet_count);
+    }
+
+    void rtcp_packet::write_sender_report_block(report_block& block)
+    {
+        write32(block.ssrc);
+        write32((block.fraction_lost << 24) | (block.cumulative_lost & 0x00ffffff));
+        write32(block.extended_seq_received);
+        write32(block.interarrival_jitter);
+        write32(block.last_sr);
+        write32(block.delay_since_last_sr);
 
         increment_RC();
-        add_bytes(sizeof(report_block));
     }
 
     void rtcp_packet::write_sdes(uint32_t src)
     {
-        if (!write_header(RTCP_SDES)) return;
-
-        if (write_ptr + sizeof(src) >= end_ptr) return;
-
+        write_header(RTCP_SDES);
+        write32(src);
         increment_RC();
-
-        *(uint32_t*)write_ptr = htonl(src);
-
-        add_bytes(sizeof(src));
     }
 
     void rtcp_packet::write_sdes_item(int id, const char* user_host)
@@ -152,26 +128,15 @@ namespace media
 
     void rtcp_packet::write_bye(uint32_t src)
     {
-        if (!write_header(RTCP_BYE)) return;
-        
-        if (write_ptr + sizeof(src) >= end_ptr) return;
-
+        write_header(RTCP_BYE);
+        write32(src);
         increment_RC();
-        
-        *(uint32_t*)write_ptr = htonl(src);
-
-        add_bytes(sizeof(src));
     }
 
     void rtcp_packet::write_bye_src(uint32_t src)
     {
-        if (write_ptr + sizeof(src) >= end_ptr) return;
-
+        write32(src);
         increment_RC();
-        
-        *(uint32_t*)write_ptr = htonl(src);
-
-        add_bytes(sizeof(src));
     }
 
     void rtcp_packet::write_bye_reason(const char* reason)
@@ -192,5 +157,42 @@ namespace media
     size_t rtcp_packet::packet_bytes_written()
     {
         return write_ptr - (char*)header;
+    }
+
+    bool rtcp_packet::move_next()
+    {
+        auto next_ptr = write_ptr + packet_size();
+        if (next_ptr >= end_ptr) return false;
+        else
+        {
+            write_ptr = next_ptr;
+            return true;
+        }
+    }
+
+    void rtcp_packet::read_header(rtcp_header& h)
+    {
+        uint32_t dword = read32();
+        
+        h.V = bf_get(dword, 30, 2);
+        h.P = bf_get(dword, 29, 1);
+        h.RC = bf_get(dword, 24, 8);
+        h.PT = bf_get(dword, 16, 8);
+        h.length = bf_get(dword, 0, 16);
+    }
+
+    void rtcp_packet::read_sender_report(sender_report& sr)
+    {
+        sr.ssrc = read32();
+        sr.ntp_msw = read32();
+        sr.ntp_lsw = read32();
+        sr.rtp_timestamp = read32();
+        sr.packet_count = read32();
+        sr.octet_count = read32();
+    }
+
+    uint32_t rtcp_packet::read_ssrc()
+    {
+        return read32();
     }
 }
