@@ -49,7 +49,7 @@ namespace media
 
     void stream::bye()
     {
-        connections.get_io_service().post(boost::bind(
+        connections.post(boost::bind(
             &rtcp::bye, &rtcp));
     }
 

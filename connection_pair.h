@@ -56,6 +56,8 @@ namespace media
         uint64_t ntp_start_time;
         uint32_t rtp_start_time;
 
+        void stop_request_received();
+
     public:
         connection_pair();
         ~connection_pair();
@@ -70,11 +72,8 @@ namespace media
         void start();
         void stop();
 
-        boost::asio::io_service& get_io_service();
-
         uint32_t get_rtp_time(uint64_t ntp_time);
         uint32_t get_rtp_start();
-        
         
         void set_rtcp_peer(const boost::asio::ip::udp::endpoint&);
         void set_rtp_peer(const boost::asio::ip::udp::endpoint&);
@@ -109,6 +108,12 @@ namespace media
             {
                 if (!ec) cb();
             });
+        }
+
+        template <typename callback_t>
+        void post(callback_t cb)
+        {
+            io.post(cb);
         }
 
 
