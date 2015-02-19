@@ -24,9 +24,13 @@ namespace media
         {
             uint32_t bytes_received;
             uint32_t packets_received;
-            uint8_t fraction_lost;
-            uint32_t packets_lost;
-            uint32_t highest_sequence;
+            int highest_sequence;
+            int base_sequence;
+            int sequence_cycles;
+            int bad_sequence;
+            int probation;
+            int expected_prior;
+            int received_prior;
             uint32_t jitter;
             uint32_t last_sr;
             ntp_time_t timestamp_last_sr;

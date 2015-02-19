@@ -10,7 +10,7 @@ int main()
 {
     using namespace boost::asio;
 
-#if 0
+#if 1
     // For debugging RTCP receives
     media::source src1;
     int src1_rtp = 40000;

@@ -11,8 +11,6 @@ namespace media
     rtcp::rtcp_peer_info::rtcp_peer_info()
         : bytes_received(0),
         packets_received(0),
-        fraction_lost(0),
-        packets_lost(0),
         highest_sequence(0),
         jitter(0),
         last_sr(0)
@@ -44,11 +42,15 @@ namespace media
 
     void rtcp::rtp_received(rtp_packet& pkt)
     {
-        auto src = peers.find(pkt.get_ssrc());
-        if (src != peers.end())
+        auto it = peers.find(pkt.get_ssrc());
+        if (it != peers.end())
         {
-            src->second.bytes_received += pkt.payload_size();
-            src->second.packets_received++;
+            auto& src = it->second;
+            
+            src.bytes_received += pkt.payload_size();
+            src.packets_received++;
+            src.highest_sequence = std::max(src.highest_sequence, pkt.get_sequence_number());
+            // TODO
         }
     }
 
@@ -115,8 +117,7 @@ namespace media
             ((sr.ntp_msw << 16) & 0xffff0000) |
             ((sr.ntp_lsw >> 16) & 0x0000ffff);
 
-        peer.timestamp_last_sr.seconds = sr.ntp_msw;
-        peer.timestamp_last_sr.fractional = sr.ntp_lsw;
+        peer.timestamp_last_sr = get_ntp_time();
     }
 
     void rtcp::receiver_report_received(rtcp_header& header, rtcp_packet& pkt)

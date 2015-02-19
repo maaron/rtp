@@ -22,7 +22,7 @@ namespace media
     int rtp_packet::get_CC() { return bf_get(header->V_P_X_CC, 0, 4); }
     bool rtp_packet::get_M() { return bit_get(header->M_PT, 7); }
     int rtp_packet::get_PT() { return bf_get(header->M_PT, 0, 7); }
-    int rtp_packet::get_sequence_number() { return ntohl(header->sequence_number); }
+    int rtp_packet::get_sequence_number() { return ntohs(header->sequence_number); }
     int rtp_packet::get_timestamp() { return ntohl(header->timestamp); }
     int rtp_packet::get_ssrc() { return ntohl(header->ssrc); }
     int rtp_packet::get_csrc(int index)
