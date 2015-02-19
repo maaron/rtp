@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "media.h"
 #include "rtcp.h"
 #include "rtcp_packet.h"
 #include "rtp_packet.h"
@@ -7,8 +8,10 @@
 
 namespace media
 {
-    rtcp::rtcp(uint32_t ssrc, const char* cname)
-        : ssrc(ssrc), cname(cname),
+    rtcp::rtcp(connection_pair& c, uint32_t ssrc, const char* cname)
+        : connection(c),
+        ssrc(ssrc), 
+        cname(cname),
         bytes_sent(0),
         packets_sent(0)
     {
@@ -30,13 +33,25 @@ namespace media
         }
     }
 
-    int rtcp::get_send_time()
+    void rtcp::bye()
     {
-        return 2500;
+        // TODO - this is simplified
+        send_bye();
     }
 
-    void rtcp::build_packet(uint64_t ntp_time, uint32_t rtp_time, rtcp_packet& pkt)
+    void rtcp::rtcp_received(rtcp_packet& pkt)
     {
+        // TODO process this packet
+    }
+
+    void rtcp::send_report()
+    {
+        char buf[2048];
+        rtcp_packet pkt(buf, sizeof(buf));
+
+        uint64_t ntp_time = get_ntp_time();
+        uint32_t rtp_time = connection.get_rtp_time(ntp_time);
+
         // Sender Report Packet
         pkt.write_sender_report(ssrc,
             ntp_time, 
@@ -61,9 +76,11 @@ namespace media
         pkt.write_sdes(ssrc);
         pkt.write_sdes_cname(cname.c_str());
         pkt.write_sdes_end();
+
+        connection.send_rtcp(pkt);
     }
 
-    void rtcp::send_bye(const char* reason)
+    void rtcp::send_bye()
     {
         char buf[2048];
         rtcp_packet pkt(buf, sizeof(buf));
@@ -73,8 +90,8 @@ namespace media
         pkt.write_sdes_end();
 
         pkt.write_bye(ssrc);
-        pkt.write_bye_reason(reason);
+        pkt.write_bye_reason(bye_reason.c_str());
         
-        local.send_to(buffer(buf, pkt.compound_size()), remote);
+        connection.send_rtcp(pkt);
     }
 }

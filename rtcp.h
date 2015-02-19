@@ -1,19 +1,22 @@
 #pragma once
 
-#include <boost\asio.hpp>
+#include "connection_pair.h"
+#include <stdint.h>
+#include <map>
+#include <string>
 
 namespace media
 {
-    using namespace boost::asio;
-
     class rtp_packet;
     class rtcp_packet;
 
     class rtcp
     {
         uint32_t ssrc;
+        connection_pair& connection;
         uint32_t bytes_sent;
         uint32_t packets_sent;
+        std::string bye_reason;
             
         struct rtcp_peer_info
         {
@@ -35,19 +38,15 @@ namespace media
         std::string cname;
 
     public:
-        rtcp(uint32_t ssrc, const char* cname);
+        rtcp(connection_pair&, uint32_t ssrc, const char* cname);
 
-        // Update octet and packet counts
         void rtp_sent(rtp_packet&);
         void rtp_received(rtp_packet&);
         void rtcp_received(rtcp_packet&);
+        void bye();
 
-        // Sends an RTCP packet
-        void build_packet(uint64_t ntp_time, uint32_t rtp_time, rtcp_packet&);
-        
-        // Calculates the time interval before sending the next RTCP packet
-        int get_send_time();
-
-        void send_bye(const char* reason);
+    private:
+        void send_report();
+        void send_bye();
     };
 }

@@ -1,6 +1,10 @@
 #pragma once
 
 #include "log.h"
+#include "rtp_packet.h"
+#include "rtcp_packet.h"
+#include <algorithm>
+#include <boost\thread.hpp>
 #include <boost\asio.hpp>
 
 namespace media
@@ -12,9 +16,11 @@ namespace media
         char buf[2048];
 
     public:
-        connection(const boost::asio::ip::udp::endpoint& local);
+        connection(boost::asio::io_service&);
 
-        void set_remote(const boost::asio::ip::udp::endpoint& ep);
+        void open(const boost::asio::ip::address&, int& port);
+        bool try_open(const boost::asio::ip::address&, int& port);
+        void set_peer(const boost::asio::ip::udp::endpoint& ep);
         void send(void* data, size_t size);
 
         template <typename callback_t>
@@ -28,9 +34,9 @@ namespace media
                     {
                         c(data, bytes_transferred);
                     }
-                    else
+                    else if (ec != boost::asio::error::operation_aborted)
                     {
-                        LOG("Socket receive error: %d, %s", ec.value(), ec.message().c_str());
+                        LOG("Socket receive error: %d, %s\n", ec.value(), ec.message().c_str());
                     }
                 });
         }
@@ -40,18 +46,38 @@ namespace media
 
     class connection_pair
     {
-        connection pair[2];
+        boost::asio::io_service io;
+        connection c1, c2;
+        connection* rtp;
+        connection* rtcp;
+        boost::asio::deadline_timer rtcp_timer;
+        boost::thread io_thread;
+
+        uint64_t ntp_start_time;
+        uint32_t rtp_start_time;
 
     public:
         connection_pair();
+        ~connection_pair();
 
         // Opens a pair of UDP sockets on the specified ports.  If both are
         // zero, a pair of adjacent, ephemeral ports are opened.  If only one
-        // is zero, it any available ephemeral port will be used.  Otherwise,
+        // is zero, any available ephemeral port will be used.  Otherwise,
         // the ports specified will attempt to be used.  If either port is
         // non-zero and already in use, or no adjacent ephemeral ports could be
-        // allocated, and exception is thrown.
-        void open(const boost::asio::ip::address& iface, int& port1, int& port2);
+        // allocated, an exception is thrown.
+        void open(const boost::asio::ip::address& iface, int& rtp_port, int& rtcp_port);
+        void start();
+        void stop();
+
+        boost::asio::io_service& get_io_service();
+
+        uint32_t get_rtp_time(uint64_t ntp_time);
+        uint32_t get_rtp_start();
+        
+        
+        void set_rtcp_peer(const boost::asio::ip::udp::endpoint&);
+        void set_rtp_peer(const boost::asio::ip::udp::endpoint&);
 
         void send_rtp(rtp_packet&);
         void send_rtcp(rtcp_packet&);
@@ -59,11 +85,32 @@ namespace media
         template <typename callback_t>
         void receive_rtp(callback_t cb)
         {
+            rtp->async_receive([cb](void* data, size_t size)
+            {
+                rtp_packet pkt(data, size);
+                cb(pkt);
+            });
         }
 
         template <typename callback_t>
         void receive_rtcp(callback_t cb)
         {
+            rtcp->async_receive([cb](void* data, size_t size)
+            {
+                rtcp_packet pkt(data, size);
+                cb(pkt);
+            });
         }
+
+        template <typename callback_t>
+        void start_timer(const boost::posix_time::ptime& t, callback_t cb)
+        {
+            rtcp_timer.expires_from_now(t, [cb](const boost::system::error_code& ec)
+            {
+                if (!ec) cb();
+            });
+        }
+
+
     };
 }

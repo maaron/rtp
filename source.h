@@ -11,7 +11,6 @@ namespace media
 
     class source
     {
-        io_service io;
         std::list<std::shared_ptr<stream> > streams;
 
     public:
@@ -30,12 +29,6 @@ namespace media
         // Stops all streams.  Upon successful completion, any active call 
         // to run() will return.
         void stop();
-
-        // This should be called from a thread chosen to perform network IO 
-        // work.  The stream object doesn't provide it's own thread.  NOT 
-        // thread-safe (only call this once).  This method only returns upon 
-        // a successful call to the stop() method.
-        void run();
 
     private:
         

@@ -4,6 +4,8 @@
 #include "media.h"
 #include "source.h"
 
+#include <stdio.h>
+
 int main()
 {
     using namespace boost::asio;
@@ -31,5 +33,8 @@ int main()
     tester.send_packet(media::get_ntp_time(), 0x431);
     */
 
-    src.run();
+    printf("Press any key to stop media\n");
+    getc(stdin);
+
+    src.stop();
 }

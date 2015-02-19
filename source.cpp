@@ -34,12 +34,4 @@ namespace media
             (*it)->stop();
         }
     }
-    
-    void source::run()
-    {
-        LOG("Starting RTP stream\n");
-        io.run();
-    }
-
-    
 }

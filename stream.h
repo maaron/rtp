@@ -1,6 +1,6 @@
 #pragma once
 
-#include "udp_connection_pair.h"
+#include "connection_pair.h"
 #include "rtcp.h"
 #include <boost\asio.hpp>
 #include <boost\thread.hpp>
@@ -14,32 +14,23 @@ namespace media
 
     class stream
     {
-        io_service io;
-        boost::thread io_thread;
-        udp_connection_pair connections;
+        connection_pair connections;
         uint32_t ssrc;
         
         rtcp rtcp;
         
-        bool timer_started;
-        deadline_timer rtcp_timer;
         void rtcp_timer_expired(const boost::system::error_code& ec);
 
         uint32_t remote_start_time;
-        uint64_t ntp_start_time;
-        uint32_t rtp_start_time;
-
-        uint32_t get_rtp_time(uint64_t ntp_time);
 
         void start_rtp_receive();
         void start_rtcp_receive();
         void start_rtcp_timer();
         void loop_rtp_packet(rtp_packet&);
 
-        void rtp_received(void* data, size_t size);
-        void rtcp_received(void* data, size_t size);
+        void rtp_received(rtp_packet&);
+        void rtcp_received(rtcp_packet&);
         void stop_request_received();
-        void run_io();
 
     public:
         stream(const char* cname);
@@ -59,7 +50,7 @@ namespace media
         // Schedules an RTCP BYE message to be sent.  The message won't 
         // necessarily be sent upon return of this method, as it occurrs in 
         // the context of another thread.
-        void bye(const char* reason);
+        void bye();
 
         // Stops the stream by completing/canceling any outstanding 
         // operations, closing sockets, etc.

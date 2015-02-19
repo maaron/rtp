@@ -13,6 +13,8 @@ namespace media
     {
     }
 
+    void* rtcp_packet::data() { return data_ptr; }
+
     int rtcp_packet::get_V() { return bf_get(header->V_P_RC, 6, 2); }
     bool rtcp_packet::get_P() { return bf_get(header->V_P_RC, 5, 1); }
     int rtcp_packet::get_RC() { return bf_get(header->V_P_RC, 0, 5); }
