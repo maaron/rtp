@@ -1,6 +1,7 @@
 
 #include "connection.h"
 #include "log.h"
+#include <sstream>
 
 namespace media
 {
@@ -18,7 +19,7 @@ namespace media
         local.open(ep.protocol());
         local.bind(ep);
 
-        LOG("Opened socket bound to [%s]:%d\n", iface.to_string().c_str(), port);
+        LOG("Opened socket bound to [%s]:%d", iface.to_string().c_str(), port);
     }
 
     bool connection::try_open(const boost::asio::ip::address& iface, int& port)
@@ -28,7 +29,7 @@ namespace media
         local.open(ep.protocol());
         local.bind(ep, ec);
 
-        if (!ec) LOG("Opened socket bound to [%s]:%d\n", iface.to_string().c_str(), port);
+        if (!ec) LOG("Opened socket bound to [%s]:%d", iface.to_string().c_str(), port);
         
         return !ec;
     }
@@ -44,7 +45,7 @@ namespace media
     {
         void* data = buf;
         local.async_receive_from(buffer(buf), remote, io_strand.wrap(
-            [cb, data](const boost::system::error_code& ec, size_t bytes_transferred)
+            [cb, data, this](const boost::system::error_code& ec, size_t bytes_transferred)
             {
                 if (!ec)
                 {
@@ -52,7 +53,7 @@ namespace media
                 }
                 else if (ec != boost::asio::error::operation_aborted)
                 {
-                    LOG("Socket receive error: %d, %s\n", ec.value(), ec.message().c_str());
+                    LOG("Socket receive error: %d, %s", ec.value(), ec.message().c_str());
                 }
             }));
     }
@@ -61,11 +62,32 @@ namespace media
     {
         if (local.is_open())
         {
-            LOG("Closing socket bound to [%s]:%d\n", 
+            LOG("Closing socket bound to [%s]:%d", 
                 local.local_endpoint().address().to_string().c_str(), 
                 local.local_endpoint().port());
 
             local.close();
         }
+    }
+
+    std::string connection::to_string()
+    {
+        std::ostringstream str;
+        
+        if (local.is_open())
+        {
+            str << local.local_endpoint().address().to_string() 
+                << ": " 
+                << local.local_endpoint().port();
+        }
+        else str << "(closed)";
+
+        str << " --> ";
+
+        str << remote.address().to_string()
+            << ": "
+            << remote.port();
+
+        return str.str();
     }
 }

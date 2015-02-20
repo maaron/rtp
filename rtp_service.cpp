@@ -1,6 +1,7 @@
 
 #include "media.h"
 #include "rtp_service.h"
+#include <boost\bind.hpp>
 
 using namespace boost;
 using namespace boost::asio;
@@ -8,7 +9,7 @@ using namespace boost::asio;
 namespace media
 {
     rtp_service::rtp_service(io_service& io)
-        : io_strand(io), c1(io_strand), c2(io_strand), rtp(&c1), rtcp(&c2), rtcp_timer(io)
+        : io_strand(io), c1(io_strand), c2(io_strand), rtp(&c1), rtcp(&c2), rtcp_timer(io), started(false)
     {
     }
 
@@ -53,29 +54,24 @@ namespace media
 
     void rtp_service::start()
     {
-        LOG("Starting IO for stream [%s](%d,%d)\n",
-            c1.local.local_endpoint().address().to_string().c_str(),
-            c1.local.local_endpoint().port(),
-            c2.local.local_endpoint().port());
+        if (!started)
+        {
+            LOG("Starting IO for stream\n");
 
-        ntp_start_time = get_ntp_time();
-        rtp_start_time = get_rtp_time(ntp_start_time);
-
-        io_thread = thread(bind(&io_service::run, &io_strand.get_io_service()));
+            ntp_start_time = get_ntp_time();
+            rtp_start_time = get_rtp_time(ntp_start_time);
+            started = true;
+        }
     }
 
     void rtp_service::stop()
     {
-        if (io_thread.joinable())
+        if (started)
         {
-            LOG("Stopping IO for stream [%s](%d,%d)\n",
-                c1.local.local_endpoint().address().to_string().c_str(),
-                c1.local.local_endpoint().port(),
-                c2.local.local_endpoint().port());
+            LOG("Stopping IO\n");
 
-            post(bind(&rtp_service::stop_request_received, this));
-
-            LOG("Finished\n");
+            io_strand.post(boost::bind(&rtp_service::stop_request_received, this));
+            started = false;
         }
     }
 
@@ -138,5 +134,10 @@ namespace media
     void rtp_service::post(std::function<void()> cb)
     {
         io_strand.post(cb);
+    }
+
+    std::string rtp_service::to_string()
+    {
+        return "RTP " + rtp->to_string() + ", RTCP " + rtcp->to_string();
     }
 }

@@ -32,7 +32,7 @@ namespace media
 
         // Start IO threads
         for (auto t = io_threads.begin(); t != io_threads.end(); t++)
-            *t = boost::thread(boost::bind(&io_service::run, io));
+            *t = boost::thread(boost::bind(&io_service::run, &io));
     }
 
     void source::stop()

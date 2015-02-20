@@ -31,7 +31,6 @@ namespace media
 
     rtcp::~rtcp()
     {
-        LOG("RTCP closing\n");
     }
 
     void rtcp::rtp_sent(rtp_packet& pkt)

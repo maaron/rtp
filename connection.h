@@ -23,5 +23,7 @@ namespace media
         void async_receive(std::function<void(void*, size_t)> cb);
 
         void close();
+
+        std::string to_string();
     };
 }

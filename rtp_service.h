@@ -22,6 +22,7 @@ namespace media
         connection* rtp;
         connection* rtcp;
         boost::asio::deadline_timer rtcp_timer;
+        bool started;
 
         ntp_time_t ntp_start_time;
         uint32_t rtp_start_time;
@@ -58,5 +59,7 @@ namespace media
         void start_timer(int ms, std::function<void()> cb);
 
         void post(std::function<void()> cb);
+
+        std::string to_string();
     };
 }
