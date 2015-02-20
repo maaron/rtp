@@ -10,8 +10,9 @@
 
 namespace media
 {
-    stream::stream(const char* cname)
+    stream::stream(boost::asio::io_service& io, const char* cname)
         : ssrc(rand32()), 
+        connections(io),
         rtcp(connections, ssrc, cname), 
         init(true)
     {
@@ -21,8 +22,8 @@ namespace media
     {
         // Make sure that the IO service is stopped before destroying child
         // objects.  The reason is that the rtcp object will be destroyed
-        // before the connection_pair object.  However, RTCP may still have
-        // callbacks queued in the connection_pair's IO service.  If a timer
+        // before the rtp_service object.  However, RTCP may still have
+        // callbacks queued in the rtp_service's IO service.  If a timer
         // expires after the rtcp object is destroyed, bad problems can happen.
         connections.stop();
     }

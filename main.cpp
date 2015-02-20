@@ -10,7 +10,7 @@ int main()
 {
     using namespace boost::asio;
 
-#if 1
+#if 0
     // For debugging RTCP receives
     media::source src1;
     int src1_rtp = 40000;
@@ -38,7 +38,7 @@ int main()
 
 #if 0
     //For debugging RTCP sends
-    media::connection_pair pair;
+    media::rtp_service pair;
     media::rtcp tester(pair, 0xfefefefe, "my_cname");
     int port1 = 50000;
     int port2 = 50001;

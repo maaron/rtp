@@ -1,6 +1,6 @@
 #pragma once
 
-#include "connection_pair.h"
+#include "rtp_service.h"
 #include <stdint.h>
 #include <map>
 #include <string>
@@ -13,7 +13,7 @@ namespace media
     class rtcp
     {
         uint32_t ssrc;
-        connection_pair& connection;
+        rtp_service& connection;
  
         bool init;
         std::string cname;
@@ -47,7 +47,7 @@ namespace media
         void bye_received(rtcp_header&, rtcp_packet&);
 
     public:
-        rtcp(connection_pair&, uint32_t ssrc, const char* cname);
+        rtcp(rtp_service&, uint32_t ssrc, const char* cname);
         ~rtcp();
 
         void rtp_sent(rtp_packet&);

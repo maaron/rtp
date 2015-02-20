@@ -1,6 +1,6 @@
 #pragma once
 
-#include "connection_pair.h"
+#include "rtp_service.h"
 #include "rtcp.h"
 #include <boost\asio.hpp>
 #include <boost\thread.hpp>
@@ -14,7 +14,7 @@ namespace media
 
     class stream
     {
-        connection_pair connections;
+        rtp_service connections;
         uint32_t ssrc;
         
         rtcp rtcp;
@@ -37,7 +37,7 @@ namespace media
         void rtcp_received(rtcp_packet&);
 
     public:
-        stream(const char* cname);
+        stream(boost::asio::io_service&, const char* cname);
         ~stream();
 
         // Opens RTP and RTCP sockets for a single stream

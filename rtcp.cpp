@@ -19,7 +19,7 @@ namespace media
         timestamp_last_sr.fractional = 0;
     }
 
-    rtcp::rtcp(connection_pair& c, uint32_t ssrc, const char* cname)
+    rtcp::rtcp(rtp_service& c, uint32_t ssrc, const char* cname)
         : connection(c),
         ssrc(ssrc), 
         cname(cname),
@@ -58,8 +58,7 @@ namespace media
     {
         send_report();
 
-        connection.start_timer(
-            boost::posix_time::milliseconds(2000), 
+        connection.start_timer(2000, 
             boost::bind(&rtcp::timer_expired, this));
     }
 
@@ -73,8 +72,7 @@ namespace media
     {
         if (init)
         {
-            connection.start_timer(
-                boost::posix_time::milliseconds(2000), 
+            connection.start_timer(2000, 
                 boost::bind(&rtcp::timer_expired, this));
 
             init = false;
@@ -170,8 +168,8 @@ namespace media
         {
             report_block b;
             b.ssrc = s->first;
-            b.fraction_lost = s->second.fraction_lost;
-            b.cumulative_lost = s->second.packets_lost;
+            b.fraction_lost = 0;
+            b.cumulative_lost = 0;
             b.extended_seq_received = s->second.highest_sequence;
             b.interarrival_jitter = s->second.jitter;
             b.last_sr = s->second.last_sr;
