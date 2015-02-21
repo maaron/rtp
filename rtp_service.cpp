@@ -56,7 +56,7 @@ namespace media
     {
         if (!started)
         {
-            LOG("Starting IO for stream\n");
+            LOG("Starting IO for stream");
 
             ntp_start_time = get_ntp_time();
             rtp_start_time = get_rtp_time(ntp_start_time);
@@ -68,7 +68,7 @@ namespace media
     {
         if (started)
         {
-            LOG("Stopping IO\n");
+            LOG("Stopping IO");
 
             io_strand.post(boost::bind(&rtp_service::stop_request_received, this));
             started = false;

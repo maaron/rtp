@@ -82,12 +82,6 @@ namespace media
         }
         else str << "(closed)";
 
-        str << " --> ";
-
-        str << remote.address().to_string()
-            << ": "
-            << remote.port();
-
         return str.str();
     }
 }
