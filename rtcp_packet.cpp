@@ -191,6 +191,18 @@ namespace media
         sr.octet_count = read32();
     }
 
+    void rtcp_packet::read_report_block(report_block& block)
+    {
+        block.ssrc = read32();
+        uint32_t lost = read32();
+        block.fraction_lost = (lost >> 24) & 0x00ff;
+        block.cumulative_lost = lost & 0x00ffffff;
+        block.extended_seq_received = read32();
+        block.interarrival_jitter = read32();
+        block.last_sr = read32();
+        block.delay_since_last_sr = read32();
+    }
+
     uint32_t rtcp_packet::read_ssrc()
     {
         return read32();

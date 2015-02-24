@@ -18,19 +18,16 @@ namespace media
         ip::udp::endpoint ep(iface, port);
         local.open(ep.protocol());
         local.bind(ep);
-
-        LOG("Opened socket bound to [%s]:%d", iface.to_string().c_str(), port);
+        port = local.local_endpoint().port();
     }
 
-    bool connection::try_open(const boost::asio::ip::address& iface, int& port)
+    bool connection::try_open(const boost::asio::ip::address& iface, int port)
     {
         system::error_code ec;
         ip::udp::endpoint ep(iface, port);
         local.open(ep.protocol());
         local.bind(ep, ec);
 
-        if (!ec) LOG("Opened socket bound to [%s]:%d", iface.to_string().c_str(), port);
-        
         return !ec;
     }
 
@@ -53,21 +50,21 @@ namespace media
                 }
                 else if (ec != boost::asio::error::operation_aborted)
                 {
-                    LOG("Socket receive error: %d, %s", ec.value(), ec.message().c_str());
+                    // TODO:  If a socket error occurs, the callback won't be
+                    // called and the receive won't be restarted.  This is good
+                    // for situations in which the socket is dead for some
+                    // reason, so that we don't start spewing error messages
+                    // uncontrollably.  However, there may be error conditions
+                    // that don't warrant giving up.  These should be identified
+                    // here and handled appropriately.
+                    dbg_msg("Socket receive error: %d, %s", ec.value(), ec.message().c_str());
                 }
             }));
     }
 
     void connection::close()
     {
-        if (local.is_open())
-        {
-            LOG("Closing socket bound to [%s]:%d", 
-                local.local_endpoint().address().to_string().c_str(), 
-                local.local_endpoint().port());
-
-            local.close();
-        }
+        if (local.is_open()) local.close();
     }
 
     std::string connection::to_string()
@@ -76,9 +73,17 @@ namespace media
         
         if (local.is_open())
         {
-            str << local.local_endpoint().address().to_string() 
-                << ": " 
-                << local.local_endpoint().port();
+            if (local.local_endpoint().address().is_v6())
+            {
+                str << '['
+                    << local.local_endpoint().address().to_string()
+                    << "]:" << local.local_endpoint().port();
+            }
+            else
+            {
+                str << local.local_endpoint().address().to_string() 
+                    << ':' << local.local_endpoint().port();
+            }
         }
         else str << "(closed)";
 

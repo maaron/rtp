@@ -35,7 +35,7 @@ namespace media
         int get_CC();
         bool get_M();
         int get_PT();
-        int get_sequence_number();
+        uint16_t get_sequence_number();
         int get_timestamp();
         int get_ssrc();
         int get_csrc(int index);

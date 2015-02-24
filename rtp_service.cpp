@@ -41,9 +41,10 @@ namespace media
                         rtp_port = port2;
                         rtcp_port = port1;
                     }
+                    return;
                 }
-                throw std::exception("Failed to allocate RTP/RTCP port pair");
             }
+            throw std::exception("Failed to allocate RTP/RTCP port pair");
         }
         else
         {
@@ -56,7 +57,7 @@ namespace media
     {
         if (!started)
         {
-            LOG("Starting IO for stream");
+            dbg("Starting IO for stream");
 
             ntp_start_time = get_ntp_time();
             rtp_start_time = get_rtp_time(ntp_start_time);
@@ -68,7 +69,7 @@ namespace media
     {
         if (started)
         {
-            LOG("Stopping IO");
+            dbg("Stopping IO");
 
             io_strand.post(boost::bind(&rtp_service::stop_request_received, this));
             started = false;

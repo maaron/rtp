@@ -16,7 +16,7 @@ namespace media
         connection(boost::asio::io_service::strand&);
 
         void open(const boost::asio::ip::address&, int& port);
-        bool try_open(const boost::asio::ip::address&, int& port);
+        bool try_open(const boost::asio::ip::address&, int port);
         void set_peer(const boost::asio::ip::udp::endpoint& ep);
         void send(void* data, size_t size);
 

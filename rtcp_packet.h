@@ -86,11 +86,6 @@ namespace media
         // also in 32-bit units).
         size_t packet_size();
 
-        int get_V();
-        bool get_P();
-        int get_RC();
-        uint8_t get_PT();
-
         bool move_next();
 
         void write_sender_report(sender_report&);
@@ -117,6 +112,7 @@ namespace media
         // Functions to get data out of the packet
         void read_header(rtcp_header&);
         void read_sender_report(sender_report&);
+        void read_report_block(report_block&);
 
         uint32_t read_ssrc();
     };

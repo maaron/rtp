@@ -54,14 +54,14 @@ int main()
 #endif
 
     media::source src;
-    int rtp_port = 60000;
-    int rtcp_port = 60001;
+    int rtp_port = 0;
+    int rtcp_port = 0;
 
-    int rtp_port2 = 60002;
-    int rtcp_port2 = 60003;
+    int rtp_port2 = 0;
+    int rtcp_port2 = 0;
 
-    src.open_stream(boost::asio::ip::address::from_string("2001:0:0:1::3"), "cname1", rtp_port, rtcp_port);
-    src.open_stream(boost::asio::ip::address::from_string("2001:0:0:1::3"), "cname2", rtp_port2, rtcp_port2);
+    src.open_stream(boost::asio::ip::address::from_string("0::0"), "cname1", rtp_port, rtcp_port);
+    src.open_stream(boost::asio::ip::address::from_string("0.0.0.0"), "cname2", rtp_port2, rtcp_port2);
 
     src.start();
 
